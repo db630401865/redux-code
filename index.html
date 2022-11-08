@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <button id="incremnet">+</button>
+  <span id="box">0</span>
+  <button id="decremnet">-</button>
+  <script src="./myRedux.js"></script>
+  <script src="./middlewares/logger.js"></script>
+  <script src="./middlewares/thunk.js"></script>
+  <script>
+    function enhancer(createStore) {
+      return function (reducer, preloadedState) {
+        var store = createStore(reducer, preloadedState)
+        var dispatch = store.dispatch
+        function _dispatch(action) {
+          if (typeof action === 'function') {
+            // 如果 action 传递的是函数,那么就去调用,之后将 dispatch 传递进去,执行异步代码
+            return action(dispatch)
+          }
+          // 如果不是函数，执行原有的逻辑
+          dispatch(action)
+        }
+        return {
+          ...store,
+          dispatch: _dispatch
+        }
+      }
+    }
+
+    function CounterReducer(state, action) {
+      switch (action.type) {
+        case 'incremnet':
+          return state + 1
+        case 'decremnet':
+          return state - 1
+        default:
+          return state
+      }
+    }
+
+    // 把大的 reducer 拆分成小的 reducer，然后通过 combinReducers 把小的 reducer 组合成一个大的 reducer
+    var rootReducer = combinReducers({ counter: CounterReducer })
+
+    // 创建 store
+    var store = createStore(rootReducer, { counter: 100 }, applyMiddleware(logger, thunk))
+
+    store.subscribe(function name(params) {
+      // 获取最新的状态
+      document.getElementById('box').innerHTML = store.getState().counter
+    })
+
+    // bindActionCreators 作用就是把 ActionCreators 转换成可以触发 aciton 的函数
+    var action = bindActionCreators({ incremnet, decremnet }, store.dispatch)
+
+    function incremnet(params) {
+      return { type: 'incremnet' }
+    }
+
+    function decremnet(params) {
+      return { type: 'decremnet' }
+    }
+
+    // 获取加按钮
+    document.getElementById('incremnet').onclick = function () {
+      // 触发 action 让数值加 1
+      // store.dispatch({ type: 'incremnet' })
+      // store.dispatch(function (dispatch) {
+      //   setTimeout(() => {
+      //     dispatch({ type: 'incremnet' })
+      //   }, 2000);
+      // })
+      action.incremnet()
+    }
+
+    // 获取减按钮
+    document.getElementById('decremnet').onclick = function () {
+      // 触发 action 让数值减 1
+      // store.dispatch({ type: 'decremnet' })
+      action.decremnet()
+    }
+  </script>
+</body>
+
+</html>
